@@ -30,6 +30,13 @@ public class MergeUtils {
         return new File(filePath).exists();
     }
 
+    public static boolean delFile(String filePath){
+        if(isExists(filePath)){
+            return new File(filePath).delete();
+        }
+        return false;
+    }
+
     public static void close(Closeable closeable) {
         try {
             closeable.close();
@@ -64,7 +71,7 @@ public class MergeUtils {
         }
     }
 
-    static boolean copyFile(InputStream inputStream, String newPath) {
+    public static boolean copyFile(InputStream inputStream, String newPath) {
         if (inputStream != null && newPath != null && !"".equals(newPath)) {
             File newFile = new File(newPath);
             OutputStream out = null;

@@ -1,5 +1,7 @@
 package com.fz.libmerge;
 
+import android.text.TextUtils;
+
 import androidx.annotation.NonNull;
 
 import java.io.FileInputStream;
@@ -19,7 +21,6 @@ import java.util.Objects;
 public class AndroidMergeService implements MergeService {
 
     RandomAccessFile rafBg;
-    RandomAccessFile rafRecord;
     RandomAccessFile rafMix;
 
     @Override
@@ -33,21 +34,24 @@ public class AndroidMergeService implements MergeService {
             throw new IllegalArgumentException("recordPcmPathList的长度需要与recordStartTimeList一致");
         }
 
-        if (MergeUtils.isExists(extra.bgPcmPath)) {
+        if (!MergeUtils.isExists(extra.bgPcmPath)) {
             callback.onFail("合成失败：背景音文件不存在");
             return;
         }
-        if (MergeUtils.isExists(extra.outputPath)) {
+        if (TextUtils.isEmpty(extra.outputPath)) {
             callback.onFail("合成失败：输出路径为空");
+            return;
+        }
+        if (MergeUtils.isExists(extra.outputPath)) {
+            callback.onFail("合成失败：输出文件已存在");
             return;
         }
 
         try {
-            final String mixPath = extra.bgPcmPath + ".mix";
-            MergeUtils.copyFile(extra.bgPcmPath, mixPath);
+            MergeUtils.copyFile(extra.bgPcmPath, extra.outputPath);
 
             rafBg = new RandomAccessFile(extra.bgPcmPath, "rw");
-            rafMix = new RandomAccessFile(mixPath, "rw");
+            rafMix = new RandomAccessFile(extra.outputPath, "rw");
 
             for (int i = 0; i < extra.recordPcmPathList.size(); i++) {
                 final String recordPcm = extra.recordPcmPathList.get(i);
@@ -59,11 +63,11 @@ public class AndroidMergeService implements MergeService {
                     return;
                 }
             }
+            callback.onMergeSuc(extra.outputPath);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
 
     private synchronized int writePcmFile(String input, RandomAccessFile rafPcm, long offset) {
         try {
