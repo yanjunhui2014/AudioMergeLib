@@ -16,6 +16,13 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+
+        maven { url 'https://repo.rdc.aliyun.com/repository/31621-release-UVGFM4/'
+            credentials{
+                username 'ZC8beb'
+                password 'snSb0jBSE4'
+            }
+        }
     }
 }
 

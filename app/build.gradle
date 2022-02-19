@@ -37,7 +37,8 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 
-    implementation  project(":LibMerge")
+//    implementation project(":LibMerge")
+    implementation "com.fz.technology:mergeLib:0.0.1"
 
     implementation "io.reactivex.rxjava2:rxjava:2.1.12"
     implementation "io.reactivex.rxjava2:rxandroid:2.0.2"
