@@ -36,6 +36,10 @@ public class AndroidMergeService implements MergeService {
             throw new IllegalArgumentException("recordPcmPathList的长度需要与recordStartTimeList一致");
         }
 
+        if (extra.recordEndTimeList != null && extra.recordEndTimeList.size() != extra.recordStartTimeList.size()) {
+            throw new IllegalArgumentException("recordEndTimeList的长度需要与recordStartTimeList一致");
+        }
+
         if (!MergeUtils.isExists(extra.bgPcmPath)) {
             callback.onFail("合成失败：背景音文件不存在");
             return;
@@ -60,19 +64,24 @@ public class AndroidMergeService implements MergeService {
                 final float startTime = extra.recordStartTimeList.get(position) / 1000.0f;
 
                 long offset = getPcmOffsetByStartTime(extra.sampleRate, startTime);
-                long end = getPcmOffsetByStartTime(extra.sampleRate, startTime + 5.0f);
+                long end = 0;
+                if (extra.recordEndTimeList != null) {
+                    end = getPcmOffsetByStartTime(extra.sampleRate, extra.recordEndTimeList.get(position) / 1000.0f);
+                }
 
                 rafMix.seek(offset);
                 FileInputStream fis = new FileInputStream(recordPcm);
                 long recordSize = fis.getChannel().size();
-                int diff = (int) (end - offset - recordSize);
-                Log.i(TAG, "preview diff = " + diff);
+
                 int dataSize = 1024 * 5;
                 byte[] data = new byte[dataSize];
                 while (fis.read(data) != -1) {
                     rafMix.write(data);
                 }
                 fis.close();
+
+                int diff = (int) (end - offset - recordSize);
+                Log.i(TAG, "preview diff = " + diff);
                 if (diff > 0) {
                     rafBg.seek(offset + recordSize);
                     int count = diff / dataSize;
