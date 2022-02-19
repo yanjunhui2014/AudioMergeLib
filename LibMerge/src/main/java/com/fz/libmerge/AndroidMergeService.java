@@ -1,6 +1,7 @@
 package com.fz.libmerge;
 
 import android.text.TextUtils;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -19,6 +20,7 @@ import java.util.Objects;
  * 2022/2/19
  */
 public class AndroidMergeService implements MergeService {
+    private static final String TAG = AndroidMergeService.class.getSimpleName();
 
     RandomAccessFile rafBg;
     RandomAccessFile rafMix;
@@ -39,11 +41,11 @@ public class AndroidMergeService implements MergeService {
             return;
         }
         if (TextUtils.isEmpty(extra.outputPath)) {
-            callback.onFail("合成失败：输出路径为空");
+            callback.onFail("合成失败：outputPath路径为空");
             return;
         }
         if (MergeUtils.isExists(extra.outputPath)) {
-            callback.onFail("合成失败：输出文件已存在");
+            callback.onFail("合成失败：outputPath文件已存在");
             return;
         }
 
@@ -53,36 +55,50 @@ public class AndroidMergeService implements MergeService {
             rafBg = new RandomAccessFile(extra.bgPcmPath, "rw");
             rafMix = new RandomAccessFile(extra.outputPath, "rw");
 
-            for (int i = 0; i < extra.recordPcmPathList.size(); i++) {
-                final String recordPcm = extra.recordPcmPathList.get(i);
-                final float startTime = extra.recordStartTimeList.get(i) / 1000.0f;
+            for (int position = 0; position < extra.recordPcmPathList.size(); position++) {
+                final String recordPcm = extra.recordPcmPathList.get(position);
+                final float startTime = extra.recordStartTimeList.get(position) / 1000.0f;
 
-                int result = writePcmFile(recordPcm, rafMix, getPcmOffsetByStartTime(extra.sampleRate, startTime));
-                if (result != 0) {
-                    callback.onFail("合成失败：音频文件合并失败");
-                    return;
+                long offset = getPcmOffsetByStartTime(extra.sampleRate, startTime);
+                long end = getPcmOffsetByStartTime(extra.sampleRate, startTime + 5.0f);
+
+                rafMix.seek(offset);
+                FileInputStream fis = new FileInputStream(recordPcm);
+                long recordSize = fis.getChannel().size();
+                int diff = (int) (end - offset - recordSize);
+                Log.i(TAG, "preview diff = " + diff);
+                int dataSize = 1024 * 5;
+                byte[] data = new byte[dataSize];
+                while (fis.read(data) != -1) {
+                    rafMix.write(data);
+                }
+                fis.close();
+                if (diff > 0) {
+                    rafBg.seek(offset + recordSize);
+                    int count = diff / dataSize;
+                    if (count == 0) {
+                        rafBg.read(data, 0, diff);
+                        rafMix.write(data, 0, diff);
+                    } else {
+                        for (int i = 0; i < count; i++) {
+                            rafBg.read(data);
+                            rafMix.write(data);
+                        }
+                        if (diff % dataSize != 0) {
+                            rafBg.read(data, 0, diff % dataSize);
+                            rafMix.write(data, 0, diff % dataSize);
+                        }
+                    }
                 }
             }
+
+            MergeUtils.close(rafBg);
+            MergeUtils.close(rafMix);
+
             callback.onMergeSuc(extra.outputPath);
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    private synchronized int writePcmFile(String input, RandomAccessFile rafPcm, long offset) {
-        try {
-            rafPcm.seek(offset);
-
-            InputStream is = new FileInputStream(input);
-            byte[] bytes = new byte[1024];
-            while (is.read(bytes) != -1) {
-                rafPcm.write(bytes);
-            }
-            return 0;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return -1;
     }
 
     private long getPcmOffsetByStartTime(int sampleRate, float startTime) {

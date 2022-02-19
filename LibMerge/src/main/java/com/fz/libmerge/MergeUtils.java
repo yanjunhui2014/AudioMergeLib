@@ -1,7 +1,6 @@
 package com.fz.libmerge;
 
 import android.text.TextUtils;
-import android.util.Log;
 
 import java.io.BufferedOutputStream;
 import java.io.Closeable;
